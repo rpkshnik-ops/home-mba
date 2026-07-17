@@ -34,7 +34,7 @@ describe('progress helpers', () => {
     const initial = createInitialProgress(manifest);
     initial.modules['01-management-foundations'].theoryCompleted = true;
     const imported = validateImportedProgress(JSON.parse(JSON.stringify(initial)), manifest);
-    expect(imported.schemaVersion).toBe(1);
+    expect(imported.schemaVersion).toBe(2);
     expect(imported.modules['01-management-foundations'].theoryCompleted).toBe(true);
   });
 });
