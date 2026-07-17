@@ -48,6 +48,33 @@ import {
 } from './lib/learning';
 
 const manifest = manifestData as CourseManifest;
+const BASE_URL = import.meta.env.BASE_URL ?? '/';
+
+function resolvePublicAssetUrl(assetPath?: string | null) {
+  if (!assetPath) return null;
+  if (/^(https?:)?\/\//.test(assetPath) || assetPath.startsWith('data:')) return assetPath;
+  const normalizedBase = BASE_URL.endsWith('/') ? BASE_URL : `${BASE_URL}/`;
+  return `${normalizedBase}${assetPath.replace(/^\/+/, '')}`;
+}
+
+function resolveMarkdownHref(module: ModuleManifest, currentUnit: LearningUnit, href?: string | null) {
+  if (!href) return null;
+  if (href.startsWith('#')) return href;
+  if (/^(https?:)?\/\//.test(href) || href.startsWith('mailto:')) return href;
+  const hiddenAnswerKeyToken = ['answer', 'keys'].join('_');
+  if (href.includes(hiddenAnswerKeyToken)) return null;
+
+  const [pathPart, hashPart] = href.split('#');
+  if (!pathPart.endsWith('.md')) return href;
+
+  const cleaned = pathPart.replace(/^\.\//, '').replace(/^\//, '');
+  const targetUnit = module.learningUnits.find((unit) => unit.sourceFile === cleaned)
+    ?? module.learningUnits.find((unit) => unit.sourceFile === currentUnit.sourceFile);
+
+  if (!targetUnit) return resolvePublicAssetUrl(cleaned);
+  const route = `/learn/${module.slug}/${targetUnit.id}`;
+  return hashPart ? `${route}#${hashPart}` : route;
+}
 
 type SaveState = 'idle' | 'saving' | 'saved';
 
@@ -316,7 +343,7 @@ function LearningPage({ progress, setProgress, saveState }: { progress: LearnerP
 
   useEffect(() => {
     if (!module || !unit) return;
-    const sourceUrl = module.materials[unit.sourceFile];
+    const sourceUrl = resolvePublicAssetUrl(module.materials[unit.sourceFile]);
     if (!sourceUrl) return;
     fetch(sourceUrl)
       .then((res) => {
@@ -363,7 +390,7 @@ function LearningPage({ progress, setProgress, saveState }: { progress: LearnerP
   if (!module) return <div className="panel">Модуль не найден.</div>;
   if (!unit) return <div className="panel">Учебный этап не найден.</div>;
   if (!module.learningUnits.length) return <div className="panel">Материалы этого модуля ещё не подготовлены.</div>;
-  const sourceUrl = module.materials[unit.sourceFile];
+  const sourceUrl = resolvePublicAssetUrl(module.materials[unit.sourceFile]);
 
   const completion = completionPercent(module, learner?.unitStatuses ?? {});
   const prevUnit = previousUnit(module, unit.id);
@@ -489,7 +516,7 @@ function LearningPage({ progress, setProgress, saveState }: { progress: LearnerP
         <div className="learning-scroll" ref={scrollRef}>
           <div className="content-head row spaced"><div><span className="badge verified-lite">{UNIT_TYPE_LABELS[unit.type]}</span><h1>{unit.title}</h1><p className="muted">{unit.summary}</p></div><button onClick={() => setProgress((prev) => toggleBookmark(prev, module.slug, unit.id))}>{learner?.bookmarks.includes(unit.id) ? '★ В закладках' : '☆ В закладки'}</button></div>
           {headings.length >= 2 && <details className="toc-box"><summary>Оглавление материала</summary><ul>{headings.map((heading) => <li key={heading.heading}>{heading.heading}</li>)}</ul></details>}
-          {loadError ? <div className="empty-state">{loadError}</div> : !sourceUrl ? <div className="empty-state">Материал не найден.</div> : markdown ? <MarkdownArticle markdown={markdown} /> : <div className="empty-state">Загрузка материала…</div>}
+          {loadError ? <div className="empty-state">{loadError}</div> : !sourceUrl ? <div className="empty-state">Материал не найден.</div> : markdown ? <MarkdownArticle markdown={markdown} module={module} currentUnit={unit} /> : <div className="empty-state">Загрузка материала…</div>}
           {unit.type === 'case' && learner && <CaseWorkspace learner={learner} onChange={updateCaseDraft} />}
           {unit.type === 'practical' && learner && <PracticalWorkspace learner={learner} onChange={updatePracticalDraft} setProgress={setProgress} moduleSlug={module.slug} />}
           {unit.type === 'quiz' && learner && <QuizWorkspace learner={learner} questions={quizQuestions} onResponse={updateQuizResponse} onSubmit={submitQuizAttempt} updateModule={(patch) => setProgress((prev) => updateModuleProgress(prev, module.slug, (entry) => ({ ...entry, ...patch })))} />}
@@ -571,8 +598,23 @@ function ReflectionWorkspace({ learner, onChange }: { learner: LearnerModuleProg
   return <section className="interactive-panel"><h2>Рефлексия</h2><div className="grid two">{fields.map(([field, label]) => <label key={field}>{label}<textarea value={learner.reflectionAnswers[field] as string} onChange={(e) => onChange(field, e.target.value)} /></label>)}</div></section>;
 }
 
-function MarkdownArticle({ markdown }: { markdown: string }) {
-  return <article className="markdown-article"><ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{markdown}</ReactMarkdown></article>;
+function MarkdownArticle({ markdown, module, currentUnit }: { markdown: string; module: ModuleManifest; currentUnit: LearningUnit }) {
+  return <article className="markdown-article"><ReactMarkdown
+    remarkPlugins={[remarkGfm, remarkMath]}
+    rehypePlugins={[rehypeKatex]}
+    components={{
+      a: ({ href, children }) => {
+        const resolvedHref = resolveMarkdownHref(module, currentUnit, href);
+        if (!resolvedHref) return <span className="muted">{children}</span>;
+        const isInternalLearnRoute = resolvedHref.startsWith('/learn/');
+        const isExternal = /^(https?:)?\/\//.test(resolvedHref);
+        if (isInternalLearnRoute) {
+          return <Link to={resolvedHref}>{children}</Link>;
+        }
+        return <a href={resolvedHref} target={isExternal ? '_blank' : undefined} rel={isExternal ? 'noreferrer' : undefined}>{children}</a>;
+      },
+    }}
+  >{markdown}</ReactMarkdown></article>;
 }
 
 function Metric({ title, value, note }: { title: string; value: string; note: string }) {

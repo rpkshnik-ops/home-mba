@@ -143,7 +143,7 @@ const modules = moduleDirs.map((slug) => {
       .replace(/^.*answer_keys.*$/gim, '> Ключ ответов исключён из web-сборки по соображениям безопасности.')
       .replace(/^.*ключ находится отдельно.*$/gim, '> Ключ ответов исключён из web-сборки по соображениям безопасности.');
     fs.writeFileSync(path.join(targetDir, file), sanitized);
-    materials[file] = `/content/${slug}/${file}`;
+    materials[file] = `content/${slug}/${file}`;
     const units = createLearningUnits(slug, file, sanitized, order);
     order += units.length;
     learningUnits.push(...units);

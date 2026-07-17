@@ -11,6 +11,9 @@ const manifest = manifestData as CourseManifest;
 
 const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
   const url = String(input);
+  if (url.includes('README.md')) {
+    return new Response(`# Модуль\n\n1. Изучить [теорию](01-theory.md).\n2. Пройти [тест](05-quiz.md).`);
+  }
   if (url.includes('01-theory.md')) {
     return new Response(`# Теория\n\n## Экономическое мышление руководителя\n\nРеальный текст теории.\n\n## Спрос, предложение и эластичность\n\nЕщё один раздел.`);
   }
@@ -67,6 +70,19 @@ describe('learning experience', () => {
 
     const target = findResumeTarget(manifest.modules.find((item) => item.slug === '02-managerial-economics')!, JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as LearnerProgressData);
     expect(target?.unitId).toBe('theory-spros-predlozhenie-i-elastichnost');
+  });
+
+  it('rewrites markdown lesson links to in-app learning routes', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(seedProgress()));
+    render(
+      <MemoryRouter initialEntries={['/learn/02-managerial-economics/overview-obzor-modulya']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const theoryLink = await screen.findByRole('link', { name: 'теорию' });
+    expect(theoryLink.getAttribute('href')).toContain('/learn/02-managerial-economics/theory-ekonomicheskoe-myshlenie-rukovoditelya');
+    expect(theoryLink.getAttribute('href')).not.toContain('01-theory.md');
   });
 
   it('migrates schema v1 progress without losing prior scores', () => {
