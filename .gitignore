@@ -1,0 +1,45 @@
+# Node / web
+web/node_modules/
+web/dist/
+web/coverage/
+web/.vite/
+
+# Generated web data/content
+web/src/data/course-manifest.json
+web/public/content/
+!web/public/content/.gitkeep
+
+# Secrets / env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.secret
+
+# Logs / temp / cache
+*.log
+.cache/
+.tmp/
+tmp/
+coverage/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local learner progress
+progress-export*.json
+*.progress.json
+backups/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,18 @@
+{
+  "name": "home-mba",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "generate:manifest": "node scripts/generate-course-manifest.mjs",
+    "validate:structure": "node scripts/validate-course-structure.mjs",
+    "validate:links": "node scripts/validate-markdown-links.mjs",
+    "validate:public-safety": "node scripts/validate-public-safety.mjs",
+    "validate:manifest": "node scripts/validate-course-manifest.mjs",
+    "validate:progress-schema": "node scripts/validate-progress-schema.mjs",
+    "validate:secrets": "node scripts/validate-no-secrets.mjs",
+    "validate:no-local-progress": "node scripts/validate-no-local-progress-in-git.mjs",
+    "validate:web": "npm --prefix web run validate",
+    "validate": "npm run generate:manifest && npm run validate:structure && npm run validate:links && npm run validate:manifest && npm run validate:progress-schema && npm run validate:secrets && npm run validate:no-local-progress && npm run validate:web && npm run validate:public-safety"
+  }
+}
